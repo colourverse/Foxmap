@@ -1,8 +1,8 @@
 {
-  "name": "mindfox",
+  "name": "foxmap",
   "version": "0.1.0",
   "private": true,
-  "description": "MindFox — a lightweight mind mapping tool",
+  "description": "Foxmap — a lightweight mind mapping tool",
   "type": "module",
   "scripts": {
     "dev": "vite",

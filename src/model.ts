@@ -333,7 +333,7 @@ export function autoLayout(doc: MindMapDoc, size: SizeFn): void {
 export function parseDoc(json: unknown): MindMapDoc {
   const d = json as MindMapDoc;
   if (!d || typeof d !== 'object' || !d.nodes || !d.rootId || !d.nodes[d.rootId]) {
-    throw new Error('Not a MindFox map file');
+    throw new Error('Not a Foxmap map file');
   }
   for (const [id, n] of Object.entries(d.nodes)) {
     if (n.id !== id || !Array.isArray(n.children) || typeof n.text !== 'string') {

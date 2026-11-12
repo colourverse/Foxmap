@@ -734,13 +734,14 @@ window.addEventListener('beforeunload', () => store.saveMap(doc));
 
 // ---------------- boot ----------------
 function boot() {
+  store.migrateLegacy();
   const lastId = store.getLast();
   const last = lastId ? store.loadMap(lastId) : null;
   const first = last ?? store.listMaps().map((m) => store.loadMap(m.id)).find(Boolean) ?? null;
   if (first) loadDoc(first);
   else {
     // Measurer needs `doc` set before sizing nodes.
-    doc = createMap('MindFox');
+    doc = createMap('Foxmap');
     const sample = fillSample(doc, size);
     store.saveMap(sample);
     loadDoc(sample);
@@ -750,7 +751,7 @@ function boot() {
 boot();
 
 // Exposed for automated tests / debugging.
-(window as unknown as { mindfox: unknown }).mindfox = {
+(window as unknown as { foxmap: unknown }).foxmap = {
   get doc() {
     return doc;
   },

@@ -82,10 +82,10 @@ export async function exportPdf(doc: MindMapDoc, m: Measurer, page: PdfPage = 'a
     const ih = h * k;
     pdf.addImage(img, 'PNG', (pw - iw) / 2, (ph - ih) / 2, iw, ih);
   }
-  pdf.setProperties({ title: doc.title, creator: 'MindFox' });
+  pdf.setProperties({ title: doc.title, creator: 'Foxmap' });
   download(pdf.output('blob'), safeName(doc.title) + '.pdf');
 }
 
 export function exportJson(doc: MindMapDoc): void {
-  download(new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }), safeName(doc.title) + '.mindfox.json');
+  download(new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }), safeName(doc.title) + '.foxmap.json');
 }

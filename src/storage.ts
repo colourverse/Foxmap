@@ -1,8 +1,32 @@
 // Saves maps in localStorage so they persist between visits.
 import { type MindMapDoc, parseDoc } from './model';
 
-const PREFIX = 'mindfox:map:';
-const LAST = 'mindfox:last';
+const PREFIX = 'foxmap:map:';
+const LAST = 'foxmap:last';
+
+/** One-time move of maps saved under the app's old name (MindFox). */
+export function migrateLegacy(): void {
+  try {
+    const OLD = 'mindfox:map:';
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(OLD)) keys.push(k);
+    }
+    for (const k of keys) {
+      const nk = PREFIX + k.slice(OLD.length);
+      if (localStorage.getItem(nk) === null) localStorage.setItem(nk, localStorage.getItem(k)!);
+      localStorage.removeItem(k);
+    }
+    const last = localStorage.getItem('mindfox:last');
+    if (last !== null) {
+      if (localStorage.getItem(LAST) === null) localStorage.setItem(LAST, last);
+      localStorage.removeItem('mindfox:last');
+    }
+  } catch {
+    /* storage unavailable */
+  }
+}
 
 export interface MapInfo {
   id: string;

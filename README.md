@@ -1,4 +1,4 @@
-# 🦊 MindFox
+# 🦊 Foxmap
 
 A lightweight, browser-based mind mapping tool inspired by MindMeister.
 
@@ -10,7 +10,7 @@ A lightweight, browser-based mind mapping tool inspired by MindMeister.
 - **Collapse/expand** branches (the ⊖ button or **Space**).
 - **Arrange**: one-click tidy layout that removes overlaps.
 - **Export**: PNG (white or transparent background, 2× resolution) and PDF (A4, Letter, or a page sized to fit the map).
-- **Saving**: maps auto-save in the browser; **Maps** lists them. **Save**/**Open** download and load `.mindfox.json` files to back up or share maps.
+- **Saving**: maps auto-save in the browser; **Maps** lists them. **Save**/**Open** download and load `.foxmap.json` files to back up or share maps (older `.mindfox.json` files still open fine).
 - Undo/redo, zoom, pan, and keyboard shortcuts (press **?** in the app).
 
 ## Keyboard
