@@ -2,7 +2,7 @@
 
 A lightweight, browser-based mind mapping tool inspired by MindMeister.
 
-**▶ [Open Foxmap](https://colourverse.github.io/foxmap/)**: runs in your browser, nothing to install.
+**▶ [Open Foxmap](https://colourverse.github.io/Foxmap/)**: runs in your browser, nothing to install.
 
 ## Features
 
@@ -37,7 +37,7 @@ npm test         # unit tests
 npm run build    # production build in dist/ (static files, host anywhere)
 ```
 
-Every push to `main` is tested, built and published to [GitHub Pages](https://colourverse.github.io/foxmap/) by `.github/workflows/deploy.yml`.
+Every push to `main` is tested, built and published to [GitHub Pages](https://colourverse.github.io/Foxmap/) by `.github/workflows/deploy.yml`.
 
 Built with TypeScript + Vite; rendering is plain SVG; PDF export uses [jsPDF](https://github.com/parallax/jsPDF).
 
