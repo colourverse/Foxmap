@@ -21,7 +21,11 @@ A lightweight, browser-based mind mapping tool inspired by MindMeister.
 | --- | --- |
 | `Tab` | Add child topic |
 | `Enter` | Add sibling topic |
-| `F2`, double-click, or start typing | Edit text (`Shift+Enter` = new line) |
+| Click a selected topic | Edit text with the cursor where you clicked |
+| Double-click a topic | Edit text, selecting the word under the pointer |
+| `F2` | Edit text with the cursor at the end |
+| Start typing | Replace the topic's text |
+| `Shift+Enter` (while editing) | New line |
 | `Delete` | Delete topic |
 | Arrow keys | Move selection |
 | `Space` | Collapse / expand |

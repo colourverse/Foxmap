@@ -63,6 +63,7 @@ button.primary:hover:not(:disabled) { background: var(--accent-dark); border-col
 #canvas { width: 100%; height: 100%; display: block; cursor: grab; user-select: none; touch-action: none; outline: none; }
 #canvas.panning { cursor: grabbing; }
 #canvas .node { cursor: pointer; }
+#canvas .node.selected text { cursor: text; }
 #canvas.dragging, #canvas.dragging .node { cursor: grabbing; }
 #canvas .toggle, #canvas .add-btn { cursor: pointer; }
 #canvas .add-btn:hover circle { fill: #1c7ed6; }
@@ -70,6 +71,7 @@ button.primary:hover:not(:disabled) { background: var(--accent-dark); border-col
 #editor {
   position: absolute; resize: none; border: 2px solid var(--focus); border-radius: 8px; outline: none;
   text-align: center; overflow: hidden; padding: 0; margin: 0; z-index: 4; line-height: 1.3;
+  white-space: pre-wrap; overflow-wrap: break-word; caret-color: currentColor;
   box-shadow: 0 4px 16px rgba(51, 154, 240, 0.25);
 }
 

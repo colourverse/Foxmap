@@ -72,6 +72,45 @@ export function wrapText(text: string, font: string, maxW: number): string[] {
   return lines;
 }
 
+/**
+ * Map a point (relative to the node centre) to a character offset in `text`,
+ * using the same wrapped lines and font the node is drawn with.
+ */
+export function offsetAtPoint(text: string, lines: string[], font: string, lineHeight: number, relX: number, relY: number): number {
+  const c = measureCtx();
+  c.font = font;
+  const top = -((lines.length - 1) * lineHeight) / 2;
+  const li = Math.max(0, Math.min(lines.length - 1, Math.round((relY - top) / lineHeight)));
+  // Start offset of each wrapped line within the original text.
+  const starts: number[] = [];
+  let pos = 0;
+  for (const ln of lines) {
+    let idx: number;
+    if (ln.trim() === '') {
+      idx = text[pos] === '\n' ? pos + 1 : pos;
+      starts.push(idx);
+      pos = idx;
+      continue;
+    }
+    idx = text.indexOf(ln, pos);
+    if (idx < 0) idx = pos;
+    starts.push(idx);
+    pos = idx + ln.length;
+  }
+  const line = lines[li].trim() === '' ? '' : lines[li];
+  const x = relX + c.measureText(line).width / 2; // text is centred
+  let best = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i <= line.length; i++) {
+    const dist = Math.abs(c.measureText(line.slice(0, i)).width - x);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = i;
+    }
+  }
+  return Math.min(text.length, starts[li] + best);
+}
+
 export interface Layout {
   lines: string[];
   size: Size;
@@ -239,7 +278,8 @@ export function renderMap(
     const { w, h } = lay.size;
     const col = nodeColors(doc, id);
 
-    const g = el('g', { transform: `translate(${x},${y})`, 'data-id': id, class: 'node' });
+    const isSel = opts.interactive && id === opts.selectedId;
+    const g = el('g', { transform: `translate(${x},${y})`, 'data-id': id, class: isSel ? 'node selected' : 'node' });
     if (opts.draggingId && id === opts.draggingId) g.setAttribute('opacity', '0.85');
 
     if (d === 0) {

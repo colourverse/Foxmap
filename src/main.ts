@@ -19,7 +19,7 @@ import {
   side,
   visibleIds,
 } from './model';
-import { Measurer, contentRect, fontFor, levelStyle, nodeColors, renderMap } from './render';
+import { Measurer, contentRect, fontFor, levelStyle, nodeColors, offsetAtPoint, renderMap } from './render';
 import { exportJson, exportPdf, exportPng } from './export';
 import * as store from './storage';
 
@@ -51,6 +51,8 @@ interface DragState {
   moved: boolean;
   snapshot: MindMapDoc;
   dropTarget: Id | null;
+  /** The topic was already selected before this press — a plain click then starts editing. */
+  wasSelected: boolean;
 }
 let drag: DragState | null = null;
 
@@ -185,19 +187,55 @@ let editingId: Id | null = null;
 let editOriginal = '';
 let editSnapshot: MindMapDoc | null = null;
 
-function startEdit(id: Id, initial?: string) {
+interface EditOptions {
+  /** Replace the text with this (typing on a selected topic). Caret goes to the end. */
+  replaceWith?: string;
+  /** Place the caret at this character offset. */
+  caret?: number;
+  /** Select the word around `caret`. */
+  selectWord?: boolean;
+  /** Select all text (new topics). */
+  selectAll?: boolean;
+}
+
+function startEdit(id: Id, opts: EditOptions = {}) {
   finishEdit(true);
   selected = id;
   editingId = id;
   editOriginal = doc.nodes[id].text;
   editSnapshot = clone(doc);
-  if (initial !== undefined) doc.nodes[id].text = initial;
+  if (opts.replaceWith !== undefined) doc.nodes[id].text = opts.replaceWith;
   editor.hidden = false;
   editor.value = doc.nodes[id].text;
   render();
   editor.focus();
-  if (initial === undefined) editor.select();
-  else editor.setSelectionRange(editor.value.length, editor.value.length);
+  const len = editor.value.length;
+  if (opts.selectAll) editor.select();
+  else if (opts.caret !== undefined && opts.selectWord) selectWordAt(opts.caret);
+  else {
+    const at = opts.caret ?? len;
+    editor.setSelectionRange(at, at);
+  }
+}
+
+function selectWordAt(offset: number) {
+  const v = editor.value;
+  const isWord = (ch: string) => /[\p{L}\p{N}_'-]/u.test(ch);
+  let a = Math.min(offset, v.length);
+  let b = a;
+  if (!isWord(v[a] ?? '') && a > 0 && isWord(v[a - 1])) a = b = a - 1;
+  while (a > 0 && isWord(v[a - 1])) a--;
+  while (b < v.length && isWord(v[b])) b++;
+  editor.setSelectionRange(a, b);
+}
+
+/** Character offset in a topic's text under a screen point. */
+function caretAt(id: Id, clientX: number, clientY: number): number {
+  const w = toWorld(clientX, clientY);
+  const p = absPos(doc, id);
+  const d = depth(doc, id);
+  const lay = measurer.layout(id);
+  return offsetAtPoint(doc.nodes[id].text, lay.lines, fontFor(d), levelStyle(d).size * 1.3, w.x - p.x, w.y - p.y);
 }
 
 function positionEditor() {
@@ -208,7 +246,8 @@ function positionEditor() {
   const d = depth(doc, id);
   const st = levelStyle(d);
   const col = nodeColors(doc, id);
-  const w = Math.max(s.w, 80) * view.k;
+  const slack = 12; // extra room so the textarea doesn't wrap earlier than the drawn text
+  const w = Math.max(s.w, 80) * view.k + slack;
   const h = s.h * view.k;
   Object.assign(editor.style, {
     left: `${p.x * view.k + view.x - w / 2}px`,
@@ -270,7 +309,7 @@ function addChildAndEdit(parent = selected) {
     selected = id;
   });
   ensureVisible(id);
-  startEdit(id);
+  startEdit(id, { selectAll: true });
 }
 
 function addSiblingAndEdit() {
@@ -282,7 +321,7 @@ function addSiblingAndEdit() {
     selected = id;
   });
   ensureVisible(id);
-  startEdit(id);
+  startEdit(id, { selectAll: true });
 }
 
 function deleteSelected() {
@@ -358,6 +397,8 @@ function navigate(key: string) {
 }
 
 // ---------------- pointer interaction ----------------
+const DOUBLE_MS = 450;
+let lastTap: { id: Id | null; t: number; x: number; y: number } = { id: null, t: 0, x: 0, y: 0 };
 function toWorld(clientX: number, clientY: number) {
   const { left, top } = stageSize();
   return { x: (clientX - left - view.x) / view.k, y: (clientY - top - view.y) / view.k };
@@ -375,6 +416,8 @@ function nodeAtPoint(clientX: number, clientY: number, exclude: Id): Id | null {
 svg.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
   closePopovers();
+  // Clicking another topic while editing commits the edit; that click only selects.
+  const justFinishedEdit = !!editingId;
   if (editingId) finishEdit(true);
   const target = e.target as Element;
   const add = target.closest('[data-add]');
@@ -390,21 +433,35 @@ svg.addEventListener('pointerdown', (e) => {
     return;
   }
   const nodeEl = target.closest('[data-id]');
+  if (nodeEl) {
+    // Topics are redrawn on every press, so the browser never fires dblclick on them;
+    // detect the double-click here instead.
+    const id = nodeEl.getAttribute('data-id')!;
+    const now = performance.now();
+    const isDouble = lastTap.id === id && now - lastTap.t < DOUBLE_MS && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 6;
+    lastTap = { id: isDouble ? null : id, t: now, x: e.clientX, y: e.clientY };
+    if (isDouble) {
+      e.preventDefault();
+      startEdit(id, { caret: caretAt(id, e.clientX, e.clientY), selectWord: true });
+      return;
+    }
+  }
   svg.setPointerCapture(e.pointerId);
   svg.focus();
   if (nodeEl) {
     const id = nodeEl.getAttribute('data-id')!;
+    const wasSelected = selected === id && !justFinishedEdit;
     selected = id;
     drag = {
       id, startX: e.clientX, startY: e.clientY,
       origDx: doc.nodes[id].dx, origDy: doc.nodes[id].dy,
       origViewX: view.x, origViewY: view.y,
-      moved: false, snapshot: clone(doc), dropTarget: null,
+      moved: false, snapshot: clone(doc), dropTarget: null, wasSelected,
     };
   } else {
     drag = {
       id: null, startX: e.clientX, startY: e.clientY, origDx: 0, origDy: 0,
-      origViewX: view.x, origViewY: view.y, moved: false, snapshot: doc, dropTarget: null,
+      origViewX: view.x, origViewY: view.y, moved: false, snapshot: doc, dropTarget: null, wasSelected: false,
     };
     svg.classList.add('panning');
   }
@@ -445,11 +502,16 @@ function mirrorChildren(id: Id) {
   }
 }
 
-function endDrag() {
+function endDrag(e: PointerEvent) {
   if (!drag) return;
   const d = drag;
   drag = null;
   svg.classList.remove('panning', 'dragging');
+  if (d.id && !d.moved && d.wasSelected && e.type === 'pointerup' && doc.nodes[d.id]) {
+    // Second click on a selected topic: edit with the caret where the user clicked.
+    startEdit(d.id, { caret: caretAt(d.id, e.clientX, e.clientY) });
+    return;
+  }
   if (d.id && d.moved) {
     if (d.dropTarget) {
       // Restore position first so reparent places it neatly under the new parent.
@@ -463,10 +525,17 @@ function endDrag() {
 svg.addEventListener('pointerup', endDrag);
 svg.addEventListener('pointercancel', endDrag);
 
+// Double-click on a selected topic: the first click opened the editor, so the second lands on it.
+editor.addEventListener('pointerup', () => {
+  if (lastTap.id && lastTap.id === editingId && performance.now() - lastTap.t < DOUBLE_MS) {
+    lastTap.id = null;
+    setTimeout(() => selectWordAt(editor.selectionStart));
+  }
+});
+
 svg.addEventListener('dblclick', (e) => {
-  const nodeEl = (e.target as Element).closest('[data-id]');
-  if (nodeEl && !(e.target as Element).closest('[data-toggle],[data-add]')) startEdit(nodeEl.getAttribute('data-id')!);
-  else if (!nodeEl) {
+  const nodeEl = (e.target as Element).closest('[data-id],[data-toggle],[data-add]');
+  if (!nodeEl) {
     // Double-click on empty canvas adds a topic to the selected node (or root).
     const w = toWorld(e.clientX, e.clientY);
     const parent = selected ?? doc.rootId;
@@ -478,7 +547,7 @@ svg.addEventListener('dblclick', (e) => {
       doc.nodes[id].dy = w.y - pp.y;
       selected = id;
     });
-    startEdit(id);
+    startEdit(id, { selectAll: true });
   }
 });
 
@@ -556,7 +625,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (selected && e.key.length === 1 && !e.altKey) {
     e.preventDefault();
-    startEdit(selected, e.key);
+    startEdit(selected, { replaceWith: e.key });
   }
 });
 
@@ -652,7 +721,7 @@ function newMap() {
   const d = createMap('Central Idea');
   store.saveMap(d);
   loadDoc(d);
-  startEdit(d.rootId);
+  startEdit(d.rootId, { selectAll: true });
 }
 $('btn-new').addEventListener('click', newMap);
 $('btn-save').addEventListener('click', () => exportJson(doc));
