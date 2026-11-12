@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>MindFox</title>
+  </head>
+  <body>
+    <header class="toolbar">
+      <div class="brand"><img src="/favicon.svg" alt="" width="24" height="24" /> MindFox</div>
+      <input id="title" class="title-input" aria-label="Map title" spellcheck="false" />
+
+      <div class="group">
+        <button id="btn-maps" title="My maps">📂 Maps</button>
+        <button id="btn-new" title="New map">＋ New</button>
+        <button id="btn-open" title="Open a .mindfox.json file">Open…</button>
+        <button id="btn-save" title="Download as .mindfox.json (Ctrl+S)">Save</button>
+      </div>
+
+      <div class="group">
+        <button id="btn-child" title="Add child topic (Tab)">↳ Child</button>
+        <button id="btn-sibling" title="Add sibling topic (Enter)">⇣ Sibling</button>
+        <button id="btn-delete" title="Delete topic (Delete)">🗑</button>
+      </div>
+
+      <div class="group">
+        <button id="btn-undo" title="Undo (Ctrl+Z)">↶</button>
+        <button id="btn-redo" title="Redo (Ctrl+Shift+Z / Ctrl+Y)">↷</button>
+      </div>
+
+      <div class="group popover-host">
+        <button id="btn-color" title="Topic colour"><span id="color-dot" class="dot"></span> Colour ▾</button>
+        <div id="color-pop" class="popover" hidden>
+          <div id="swatches" class="swatches"></div>
+          <div class="pop-row">
+            <label class="custom-color">Custom <input type="color" id="custom-color" value="#1c7ed6" /></label>
+            <button id="btn-color-auto" title="Use the automatic branch colour">Auto</button>
+          </div>
+          <label class="pop-row small"><input type="checkbox" id="color-branch" /> Apply to whole branch</label>
+        </div>
+      </div>
+
+      <div class="group">
+        <button id="btn-layout" title="Auto-arrange all topics">✨ Arrange</button>
+        <button id="btn-fit" title="Fit map to screen (Ctrl+0)">⤢ Fit</button>
+        <button id="btn-zoom-out" title="Zoom out (Ctrl+-)">−</button>
+        <span id="zoom-label" class="zoom-label">100%</span>
+        <button id="btn-zoom-in" title="Zoom in (Ctrl+=)">+</button>
+      </div>
+
+      <div class="group popover-host">
+        <button id="btn-help" title="Keyboard shortcuts">?</button>
+        <button id="btn-export" class="primary">Export ▾</button>
+        <div id="export-pop" class="popover right" hidden>
+          <button data-export="png">PNG image</button>
+          <button data-export="png-t">PNG (transparent)</button>
+          <hr />
+          <button data-export="pdf-a4">PDF — A4</button>
+          <button data-export="pdf-letter">PDF — Letter</button>
+          <button data-export="pdf-fit">PDF — fit to map</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="stage">
+      <svg id="canvas" tabindex="0" aria-label="Mind map canvas">
+        <defs>
+          <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="1" fill="#d5dbe3" />
+          </pattern>
+        </defs>
+        <rect id="bg" width="100%" height="100%" fill="url(#grid)" />
+        <g id="viewport">
+          <g id="edges"></g>
+          <g id="nodes"></g>
+        </g>
+      </svg>
+      <textarea id="editor" spellcheck="true" hidden></textarea>
+    </main>
+
+    <div id="toast" class="toast" hidden></div>
+    <input type="file" id="file-input" accept=".json,application/json" hidden />
+
+    <dialog id="maps-dialog">
+      <h2>My maps</h2>
+      <p class="muted">Maps are saved automatically in this browser.</p>
+      <ul id="maps-list"></ul>
+      <div class="dialog-actions">
+        <button id="maps-new">＋ New map</button>
+        <button id="maps-close" class="primary">Close</button>
+      </div>
+    </dialog>
+
+    <dialog id="help-dialog">
+      <h2>Shortcuts</h2>
+      <table class="keys">
+        <tr><td><kbd>Tab</kbd></td><td>Add child topic</td></tr>
+        <tr><td><kbd>Enter</kbd></td><td>Add sibling topic</td></tr>
+        <tr><td><kbd>F2</kbd> / double-click / start typing</td><td>Edit topic text</td></tr>
+        <tr><td><kbd>Shift</kbd>+<kbd>Enter</kbd> (while editing)</td><td>New line</td></tr>
+        <tr><td><kbd>Delete</kbd></td><td>Delete topic and its sub-topics</td></tr>
+        <tr><td><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd></td><td>Move selection</td></tr>
+        <tr><td><kbd>Space</kbd></td><td>Collapse / expand</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Undo / redo</td></tr>
+        <tr><td>Drag topic</td><td>Move it (sub-topics follow)</td></tr>
+        <tr><td>Drop topic on another</td><td>Make it a sub-topic of that one</td></tr>
+        <tr><td><kbd>Shift</kbd>+drag</td><td>Move without re-parenting</td></tr>
+        <tr><td>Drag background / scroll</td><td>Pan</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+scroll / pinch</td><td>Zoom</td></tr>
+      </table>
+      <div class="dialog-actions"><button id="help-close" class="primary">Got it</button></div>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
