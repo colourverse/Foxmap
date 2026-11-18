@@ -31,6 +31,7 @@ A lightweight, browser-based mind mapping tool inspired by MindMeister.
 | `Space` | Collapse / expand |
 | `Ctrl+Z` / `Ctrl+Y` | Undo / redo |
 | `Ctrl` + scroll | Zoom |
+| Pinch with two fingers (touch screens) | Zoom; move both fingers to pan |
 
 ## Development
 

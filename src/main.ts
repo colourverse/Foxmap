@@ -413,6 +413,98 @@ function nodeAtPoint(clientX: number, clientY: number, exclude: Id): Id | null {
   return null;
 }
 
+/** Keep receiving this pointer's events even if it leaves the canvas. */
+function capture(pointerId: number) {
+  try {
+    svg.setPointerCapture(pointerId);
+  } catch {
+    /* pointer already gone */
+  }
+}
+
+// ---- Two-finger pinch-zoom & pan (touch) ----
+// These listeners run in the capture phase, before the single-pointer handlers below,
+// and swallow events while a pinch is in progress.
+const touches = new Map<number, { x: number; y: number }>();
+let pinch: { dist: number; k: number; wx: number; wy: number } | null = null;
+
+function pinchMetrics() {
+  const [a, b] = [...touches.values()];
+  const { left, top } = stageSize();
+  return {
+    dist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+    mx: (a.x + b.x) / 2 - left,
+    my: (a.y + b.y) / 2 - top,
+  };
+}
+
+svg.addEventListener(
+  'pointerdown',
+  (e) => {
+    if (e.pointerType !== 'touch') return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size < 2) return;
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    capture(e.pointerId);
+    if (pinch) return; // a third finger: ignore
+    // Cancel whatever the first finger started (topic drag or pan) without leaving traces.
+    if (drag) {
+      if (drag.id && drag.moved) doc = drag.snapshot;
+      drag = null;
+      svg.classList.remove('panning', 'dragging');
+    }
+    lastTap.id = null;
+    const m = pinchMetrics();
+    // Remember the map point under the fingers' midpoint so it stays under them.
+    pinch = { dist: m.dist, k: view.k, wx: (m.mx - view.x) / view.k, wy: (m.my - view.y) / view.k };
+    render();
+  },
+  { capture: true },
+);
+
+svg.addEventListener(
+  'pointermove',
+  (e) => {
+    if (e.pointerType !== 'touch' || !touches.has(e.pointerId)) return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (!pinch || touches.size < 2) return;
+    e.stopImmediatePropagation();
+    const m = pinchMetrics();
+    view.k = Math.max(0.1, Math.min(4, pinch.k * (m.dist / pinch.dist)));
+    view.x = m.mx - pinch.wx * view.k;
+    view.y = m.my - pinch.wy * view.k;
+    applyView();
+  },
+  { capture: true },
+);
+
+function endTouch(e: PointerEvent) {
+  if (e.pointerType !== 'touch') return;
+  touches.delete(e.pointerId);
+  if (!pinch) return;
+  e.stopImmediatePropagation();
+  if (touches.size >= 2) {
+    // Still two fingers down (one of three lifted): re-anchor the pinch.
+    const m = pinchMetrics();
+    pinch = { dist: m.dist, k: view.k, wx: (m.mx - view.x) / view.k, wy: (m.my - view.y) / view.k };
+    return;
+  }
+  pinch = null;
+  // Keep panning with the remaining finger.
+  const rest = [...touches.values()][0];
+  if (rest) {
+    drag = {
+      id: null, startX: rest.x, startY: rest.y, origDx: 0, origDy: 0, origViewX: view.x, origViewY: view.y,
+      moved: true, snapshot: doc, dropTarget: null, wasSelected: false,
+    };
+  }
+}
+svg.addEventListener('pointerup', endTouch, { capture: true });
+svg.addEventListener('pointercancel', endTouch, { capture: true });
+// Safari's own pinch gesture events: stop it zooming the whole page instead of the map.
+for (const t of ['gesturestart', 'gesturechange', 'gestureend']) svg.addEventListener(t, (e) => e.preventDefault());
+
 svg.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
   closePopovers();
@@ -446,7 +538,7 @@ svg.addEventListener('pointerdown', (e) => {
       return;
     }
   }
-  svg.setPointerCapture(e.pointerId);
+  capture(e.pointerId);
   svg.focus();
   if (nodeEl) {
     const id = nodeEl.getAttribute('data-id')!;
